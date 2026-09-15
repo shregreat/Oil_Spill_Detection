@@ -77,12 +77,36 @@ export interface HealthResponse {
   version: string;
 }
 
+// Resolve API URL dynamically supporting Vite (import.meta.env.VITE_API_URL) & Next.js (process.env.NEXT_PUBLIC_API_URL)
+const resolveApiUrl = (): string => {
+  try {
+    if (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_URL) {
+      return (import.meta as any).env.VITE_API_URL;
+    }
+  } catch {}
+  try {
+    if (typeof process !== "undefined" && process.env) {
+      return (
+        process.env.NEXT_PUBLIC_API_URL ||
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        process.env.VITE_API_URL ||
+        process.env.REACT_APP_API_URL ||
+        "http://127.0.0.1:8000"
+      );
+    }
+  } catch {}
+  return "http://127.0.0.1:8000";
+};
+
+export const API_URL = resolveApiUrl();
+
 export class OilSpillApiClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string = "http://127.0.0.1:8000") {
+  constructor(baseUrl?: string) {
+    const url = baseUrl || API_URL || "http://127.0.0.1:8000";
     // Remove trailing slash if provided
-    this.baseUrl = baseUrl.replace(/\/+$/, "");
+    this.baseUrl = url.replace(/\/+$/, "");
   }
 
   /**
@@ -185,6 +209,20 @@ export class OilSpillApiClient {
       );
     }
 
+    return res.json();
+  }
+
+  /**
+   * Fetch detected oil spills (e.g. from Supabase Edge Function or backend /spills endpoint).
+   */
+  async getSpills(): Promise<DetectionResult[]> {
+    const res = await fetch(`${this.baseUrl}/spills`);
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(
+        errorData?.detail || `Failed to fetch spills: ${res.status}`
+      );
+    }
     return res.json();
   }
 

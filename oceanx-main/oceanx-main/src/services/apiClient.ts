@@ -8,8 +8,29 @@
  * changes are required because components never call fetch directly.
  */
 
+// Resolve API URL dynamically supporting Vite (import.meta.env.VITE_API_URL) & Next.js (process.env.NEXT_PUBLIC_API_URL)
+const resolveApiUrl = (): string => {
+  try {
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) {
+      return (import.meta as any).env.VITE_API_URL;
+    }
+  } catch {}
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      return (
+        process.env.NEXT_PUBLIC_API_URL ||
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        process.env.VITE_API_URL ||
+        ''
+      );
+    }
+  } catch {}
+  return '';
+};
+
 export const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false';
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
+export const API_BASE_URL = resolveApiUrl();
+export const API_URL = API_BASE_URL;
 export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? '';
 
 export class ApiError extends Error {

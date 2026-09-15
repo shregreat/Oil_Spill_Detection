@@ -5,3 +5,4 @@ Write-Host "============================================================" -Foreg
 
 Set-Location "$PSScriptRoot\oceanx-main\oceanx-main"
 npx vercel --prod
+

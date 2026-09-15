@@ -4,10 +4,34 @@ This guide is for teammates building the user interface. It contains everything 
 
 ---
 
-## 1. Backend Server URL
-- **Local API Base:** `http://127.0.0.1:8000`
-- **Interactive OpenAPI Docs:** `http://127.0.0.1:8000/docs`
-- **CORS:** Pre-configured for `localhost:3000`, `localhost:5173` (Vite), and `localhost:8080`.
+## 1. Backend & Edge Function Server URL
+Set your API base URL in your `.env` file:
+
+**For Vite React projects (`.env`):**
+```env
+VITE_API_URL=https://your-project.supabase.co/functions/v1/api
+# or local:
+# VITE_API_URL=http://127.0.0.1:8000
+```
+
+**For Next.js projects (`.env.local`):**
+```env
+NEXT_PUBLIC_API_URL=https://your-project.supabase.co/functions/v1/api
+```
+
+### Direct `fetch` Usage in Components:
+Instead of hardcoding `http://localhost:...`, use the environment variable:
+```ts
+// In Vite React:
+const API_URL = import.meta.env.VITE_API_URL;
+
+// In Next.js:
+// const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+// Fetching from your API or Edge Function:
+const response = await fetch(`${API_URL}/spills`);
+const spills = await response.json();
+```
 
 ---
 

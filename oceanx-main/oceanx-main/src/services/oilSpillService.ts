@@ -3,7 +3,27 @@
  * Connects OceanX frontend directly to the PyTorch U-Net backend.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8000/api/v1';
+const resolveApiUrl = (): string => {
+  try {
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) {
+      return (import.meta as any).env.VITE_API_URL;
+    }
+  } catch {}
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      return (
+        process.env.NEXT_PUBLIC_API_URL ||
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        process.env.VITE_API_URL ||
+        'http://127.0.0.1:8000/api/v1'
+      );
+    }
+  } catch {}
+  return 'http://127.0.0.1:8000/api/v1';
+};
+
+export const API_URL = resolveApiUrl();
+const API_BASE = API_URL.replace(/\/+$/, '');
 
 export interface HealthResponse {
   status: string;
@@ -209,6 +229,19 @@ export const oilSpillService = {
         total_area_km2: 0,
         detection_rate: 0
       };
+    }
+  },
+
+  /**
+   * Fetch detected oil spills (e.g. from an Edge Function /spills).
+   */
+  async getSpills(): Promise<DetectionResult[]> {
+    try {
+      const res = await fetch(`${API_BASE}/spills`);
+      if (!res.ok) return [];
+      return await res.json();
+    } catch {
+      return [];
     }
   }
 };

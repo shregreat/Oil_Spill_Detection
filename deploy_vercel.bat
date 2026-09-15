@@ -5,3 +5,4 @@ echo ============================================================
 cd /d "%~dp0oceanx-main\oceanx-main"
 npx vercel --prod
 pause
+
