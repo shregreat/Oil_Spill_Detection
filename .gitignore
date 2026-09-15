@@ -29,6 +29,7 @@ dist/
 node_modules/
 .next/
 out/
+.vercel/
 
 # ML checkpoints and generated analysis output
 *.pth
