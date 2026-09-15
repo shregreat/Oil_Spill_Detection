@@ -1,0 +1,12 @@
+export { apiClient, ApiError, USE_MOCKS } from './apiClient';
+export { incidentService, type IncidentFilter } from './incidentService';
+export { satelliteService, type SceneFilter, PROCESSING_SEQUENCE } from './satelliteService';
+export { aisService, type VesselFilter, VESSEL_TYPES } from './aisService';
+export { weatherService } from './weatherService';
+export { oceanService } from './oceanService';
+export { forecastService } from './forecastService';
+export { alertService, type AlertFilter, ALERT_TYPE_LABELS } from './alertService';
+export { systemService } from './systemService';
+export { authService, DEMO_CREDENTIALS, type Session } from './authService';
+export { websocketService, type StreamEvent } from './websocketService';
+export { oilSpillService, type PredictResponse, type SampleScene, type HealthResponse } from './oilSpillService';

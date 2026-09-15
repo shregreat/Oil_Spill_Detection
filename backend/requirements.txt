@@ -1,0 +1,26 @@
+# ============================================================
+# Oil Spill Detection Backend - Dependencies
+# ============================================================
+
+# Web framework
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.20
+
+# Supabase
+supabase==2.15.2
+
+# Environment
+python-dotenv==1.1.0
+
+# ML / Deep Learning
+torch>=2.0.0
+numpy>=1.24.0
+
+# Image processing
+opencv-python-headless>=4.8.0
+tifffile>=2023.7.0
+rasterio>=1.3.0
+
+# Utilities
+Pillow>=10.0.0
