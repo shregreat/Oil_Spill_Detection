@@ -396,3 +396,7 @@ For the smoothest experience:
 5. Start the **Next.js frontend**.
 6. Open `http://localhost:3000`.
 7. Use the demo credentials to access the dashboard.
+
+
+
+...........................................................................................
