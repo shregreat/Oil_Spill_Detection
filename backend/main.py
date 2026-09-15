@@ -12,20 +12,7 @@ from backend.config import (
     DEBUG
 )
 from backend.services.model_service import load_model
-from backend.routes import (
-    health,
-    detection,
-    history,
-    incidents,
-    ais,
-    alerts,
-    satellite,
-    weather,
-    forecast,
-    system,
-    auth,
-    websocket
-)
+from backend.routes import health, detection, history
 
 
 # ============================================================
@@ -108,60 +95,6 @@ app.include_router(
 
 app.include_router(
     history.router,
-    prefix=API_PREFIX
-)
-
-app.include_router(
-    incidents.router,
-    prefix=API_PREFIX
-)
-
-app.include_router(
-    ais.router,
-    prefix=API_PREFIX
-)
-
-app.include_router(
-    alerts.router,
-    prefix=API_PREFIX
-)
-
-app.include_router(
-    satellite.router,
-    prefix=API_PREFIX
-)
-
-app.include_router(
-    weather.weather_router,
-    prefix=API_PREFIX
-)
-
-app.include_router(
-    weather.ocean_router,
-    prefix=API_PREFIX
-)
-
-app.include_router(
-    forecast.router,
-    prefix=API_PREFIX
-)
-
-app.include_router(
-    system.router,
-    prefix=API_PREFIX
-)
-
-app.include_router(
-    auth.router,
-    prefix=API_PREFIX
-)
-
-# Mount WebSocket endpoint both at root /ws/stream and /api/v1/ws/stream
-app.include_router(
-    websocket.router
-)
-app.include_router(
-    websocket.router,
     prefix=API_PREFIX
 )
 

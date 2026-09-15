@@ -152,38 +152,6 @@ def _process_sar_image(
         polygons=geometry["polygons"]
     )
 
-    # Automatically generate Incident and Alert in system
-    try:
-        lat = geometry["latitude"] if geometry["latitude"] is not None else 19.42
-        lng = geometry["longitude"] if geometry["longitude"] is not None else 71.60
-        inc = local_store.create_incident_from_detection(
-            filename=filename,
-            scan_id=scan_id,
-            confidence=geometry["confidence"],
-            latitude=lat,
-            longitude=lng,
-            area_km2=geometry["area_km2"],
-            perimeter_m=geometry["perimeter_m"],
-            polygon=geometry["polygon"],
-            polygons=geometry["polygons"],
-            image_url=image_url,
-            overlay_url=overlay_url or overlay_base64
-        )
-        try:
-            import asyncio
-            from backend.routes.websocket import broadcast_event
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.create_task(broadcast_event({
-                    "type": "incident_updated",
-                    "payload": inc
-                }))
-        except Exception:
-            pass
-    except Exception as e:
-        logger.warning("Could not auto-generate incident for scan %s: %s", scan_id, e)
-
-
     return PredictResponse(
         success=True,
         scan_id=scan_id,
