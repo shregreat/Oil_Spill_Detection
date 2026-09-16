@@ -3,7 +3,13 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from supabase import create_client, Client
+try:
+    from supabase import create_client, Client
+    HAS_SUPABASE_LIB = True
+except (ImportError, AttributeError):
+    create_client = None
+    Client = None
+    HAS_SUPABASE_LIB = False
 
 from backend.config import SUPABASE_URL, SUPABASE_KEY, SUPABASE_BUCKET
 
@@ -42,9 +48,9 @@ def get_supabase() -> Client:
 
 
 def is_supabase_configured() -> bool:
-    """Check if Supabase credentials are provided."""
+    """Check if Supabase library is installed and credentials are provided."""
 
-    return bool(SUPABASE_URL) and bool(SUPABASE_KEY)
+    return bool(HAS_SUPABASE_LIB and SUPABASE_URL and SUPABASE_KEY)
 
 
 # ============================================================

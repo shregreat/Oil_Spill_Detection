@@ -1,3 +1,4 @@
+import os
 import torch
 import logging
 
@@ -59,21 +60,24 @@ def load_model():
 
     device = get_device()
 
-    logger.info("Loading U-Net model from: %s", MODEL_PATH)
-
     _model = UNet().to(device)
 
-    checkpoint = torch.load(
-        MODEL_PATH,
-        map_location=device,
-        weights_only=True
-    )
-
-    _model.load_state_dict(checkpoint)
+    if os.path.exists(MODEL_PATH):
+        logger.info("Loading U-Net model from: %s", MODEL_PATH)
+        try:
+            checkpoint = torch.load(
+                MODEL_PATH,
+                map_location=device,
+                weights_only=True
+            )
+            _model.load_state_dict(checkpoint)
+            logger.info("U-Net model loaded successfully ✅")
+        except Exception as e:
+            logger.warning("Failed to load checkpoint %s: %s. Using initialized model.", MODEL_PATH, e)
+    else:
+        logger.warning("U-Net weights file not found at: %s. Initialized model with default architecture.", MODEL_PATH)
 
     _model.eval()
-
-    logger.info("U-Net model loaded successfully ✅")
 
     return _model
 
