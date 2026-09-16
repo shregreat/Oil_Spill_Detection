@@ -113,3 +113,14 @@ body {
   background: transparent;
   border: none;
 }
+
+/* Recharts styling */
+.recharts-responsive-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+}
+
+.recharts-wrapper {
+  max-width: 100% !important;
+}

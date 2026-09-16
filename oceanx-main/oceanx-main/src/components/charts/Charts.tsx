@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import {
   Area,
   AreaChart,
@@ -47,23 +47,36 @@ export function ChartFrame({
   children: ReactNode;
   className?: string;
 }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div className={cn('panel p-4', className)}>
       <div className="mb-3">
         <p className="text-xs font-semibold text-ink">{title}</p>
         {subtitle && <p className="mt-0.5 text-[11px] text-muted">{subtitle}</p>}
       </div>
-      <div style={{ height }}>
-        <ResponsiveContainer width="100%" height="100%">
-          {children as never}
-        </ResponsiveContainer>
+      <div style={{ height, minHeight: height }} className="relative w-full">
+        {mounted ? (
+          children
+        ) : (
+          <div
+            style={{ height }}
+            className="flex items-center justify-center text-muted text-xs bg-slate-900/20 rounded-md animate-pulse"
+          >
+            Loading visualization...
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 export function AreaTrend({
-  data,
+  data = [],
   xKey,
   series
 }: {
@@ -72,36 +85,38 @@ export function AreaTrend({
   series: { key: string; name: string; color: string }[];
 }) {
   return (
-    <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
-      <defs>
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+      <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
+        <defs>
+          {series.map((s) => (
+            <linearGradient key={s.key} id={`grad-${s.key}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={s.color} stopOpacity={0.45} />
+              <stop offset="100%" stopColor={s.color} stopOpacity={0.02} />
+            </linearGradient>
+          ))}
+        </defs>
+        <CartesianGrid {...GRID} />
+        <XAxis dataKey={xKey} {...AXIS} />
+        <YAxis {...AXIS} />
+        <Tooltip {...TOOLTIP_STYLE} />
         {series.map((s) => (
-          <linearGradient key={s.key} id={`grad-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={s.color} stopOpacity={0.45} />
-            <stop offset="100%" stopColor={s.color} stopOpacity={0.02} />
-          </linearGradient>
+          <Area
+            key={s.key}
+            type="monotone"
+            dataKey={s.key}
+            name={s.name}
+            stroke={s.color}
+            strokeWidth={1.8}
+            fill={`url(#grad-${s.key})`}
+          />
         ))}
-      </defs>
-      <CartesianGrid {...GRID} />
-      <XAxis dataKey={xKey} {...AXIS} />
-      <YAxis {...AXIS} />
-      <Tooltip {...TOOLTIP_STYLE} />
-      {series.map((s) => (
-        <Area
-          key={s.key}
-          type="monotone"
-          dataKey={s.key}
-          name={s.name}
-          stroke={s.color}
-          strokeWidth={1.8}
-          fill={`url(#grad-${s.key})`}
-        />
-      ))}
-    </AreaChart>
+      </AreaChart>
+    </ResponsiveContainer>
   );
 }
 
 export function LineTrend({
-  data,
+  data = [],
   xKey,
   series,
   timeAxis = false
@@ -112,35 +127,37 @@ export function LineTrend({
   timeAxis?: boolean;
 }) {
   return (
-    <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
-      <CartesianGrid {...GRID} />
-      <XAxis
-        dataKey={xKey}
-        {...AXIS}
-        tickFormatter={timeAxis ? (v: string) => formatTime(v) : undefined}
-        minTickGap={24}
-      />
-      <YAxis {...AXIS} />
-      <Tooltip {...TOOLTIP_STYLE} labelFormatter={timeAxis ? (v) => formatTime(String(v)) : undefined} />
-      <Legend wrapperStyle={{ fontSize: 10, color: '#7e9bbd' }} />
-      {series.map((s) => (
-        <Line
-          key={s.key}
-          type="monotone"
-          dataKey={s.key}
-          name={s.name}
-          stroke={s.color}
-          strokeWidth={1.8}
-          strokeDasharray={s.dashed ? '4 4' : undefined}
-          dot={false}
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+      <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
+        <CartesianGrid {...GRID} />
+        <XAxis
+          dataKey={xKey}
+          {...AXIS}
+          tickFormatter={timeAxis ? (v: string) => formatTime(v) : undefined}
+          minTickGap={24}
         />
-      ))}
-    </LineChart>
+        <YAxis {...AXIS} />
+        <Tooltip {...TOOLTIP_STYLE} labelFormatter={timeAxis ? (v) => formatTime(String(v)) : undefined} />
+        <Legend wrapperStyle={{ fontSize: 10, color: '#7e9bbd' }} />
+        {series.map((s) => (
+          <Line
+            key={s.key}
+            type="monotone"
+            dataKey={s.key}
+            name={s.name}
+            stroke={s.color}
+            strokeWidth={1.8}
+            strokeDasharray={s.dashed ? '4 4' : undefined}
+            dot={false}
+          />
+        ))}
+      </LineChart>
+    </ResponsiveContainer>
   );
 }
 
 export function BarSeries({
-  data,
+  data = [],
   xKey,
   series,
   colorByValue
@@ -151,20 +168,22 @@ export function BarSeries({
   colorByValue?: (value: number) => string;
 }) {
   return (
-    <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
-      <CartesianGrid {...GRID} vertical={false} />
-      <XAxis dataKey={xKey} {...AXIS} interval={0} angle={0} />
-      <YAxis {...AXIS} />
-      <Tooltip {...TOOLTIP_STYLE} cursor={{ fill: 'rgba(34,211,238,0.06)' }} />
-      {series.map((s) => (
-        <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} radius={[3, 3, 0, 0]} maxBarSize={34}>
-          {colorByValue &&
-            data.map((row, i) => (
-              <Cell key={i} fill={colorByValue(Number(row[s.key]))} />
-            ))}
-        </Bar>
-      ))}
-    </BarChart>
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+      <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
+        <CartesianGrid {...GRID} vertical={false} />
+        <XAxis dataKey={xKey} {...AXIS} interval={0} angle={0} />
+        <YAxis {...AXIS} />
+        <Tooltip {...TOOLTIP_STYLE} cursor={{ fill: 'rgba(34,211,238,0.06)' }} />
+        {series.map((s) => (
+          <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} radius={[3, 3, 0, 0]} maxBarSize={34}>
+            {colorByValue &&
+              data.map((row, i) => (
+                <Cell key={i} fill={colorByValue(Number(row[s.key]))} />
+              ))}
+          </Bar>
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -179,37 +198,39 @@ export function ForecastChart({ forecast, height = 220 }: { forecast: ForecastSt
 
   return (
     <ChartFrame title="Forecast spread and confidence" subtitle="Slick area, detector confidence and shoreline risk by horizon" height={height}>
-      <ComposedChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
-        <defs>
-          <linearGradient id="grad-forecast-area" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22c55e" stopOpacity={0.4} />
-            <stop offset="100%" stopColor="#22c55e" stopOpacity={0.02} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid {...GRID} />
-        <XAxis dataKey="horizon" {...AXIS} />
-        <YAxis {...AXIS} />
-        <Tooltip {...TOOLTIP_STYLE} />
-        <Legend wrapperStyle={{ fontSize: 10, color: '#7e9bbd' }} />
-        <Area
-          type="monotone"
-          dataKey="areaKm2"
-          name="Area (km\u00b2)"
-          stroke="#22c55e"
-          strokeWidth={1.8}
-          fill="url(#grad-forecast-area)"
-        />
-        <Line type="monotone" dataKey="confidence" name="Confidence (%)" stroke="#22d3ee" strokeWidth={1.6} dot={false} />
-        <Line
-          type="monotone"
-          dataKey="shorelineRisk"
-          name="Shoreline risk (%)"
-          stroke="#f97316"
-          strokeWidth={1.6}
-          strokeDasharray="4 4"
-          dot={false}
-        />
-      </ComposedChart>
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+        <ComposedChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
+          <defs>
+            <linearGradient id="grad-forecast-area" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#22c55e" stopOpacity={0.4} />
+              <stop offset="100%" stopColor="#22c55e" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid {...GRID} />
+          <XAxis dataKey="horizon" {...AXIS} />
+          <YAxis {...AXIS} />
+          <Tooltip {...TOOLTIP_STYLE} />
+          <Legend wrapperStyle={{ fontSize: 10, color: '#7e9bbd' }} />
+          <Area
+            type="monotone"
+            dataKey="areaKm2"
+            name="Area (km²)"
+            stroke="#22c55e"
+            strokeWidth={1.8}
+            fill="url(#grad-forecast-area)"
+          />
+          <Line type="monotone" dataKey="confidence" name="Confidence (%)" stroke="#22d3ee" strokeWidth={1.6} dot={false} />
+          <Line
+            type="monotone"
+            dataKey="shorelineRisk"
+            name="Shoreline risk (%)"
+            stroke="#f97316"
+            strokeWidth={1.6}
+            strokeDasharray="4 4"
+            dot={false}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
     </ChartFrame>
   );
 }
