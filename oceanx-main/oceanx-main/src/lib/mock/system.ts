@@ -98,7 +98,7 @@ export const DATA_SOURCES: DataSource[] = [
     refreshIntervalMin: 360,
     recordsLast24h: 4,
     endpoint: 'open-data/v1/forecast',
-    message: 'Nominal. 0.25° wind and wave fields available to +120 h.'
+    message: 'Nominal. 0.25\u00b0 wind and wave fields available to +120 h.'
   },
   {
     id: 'incois',

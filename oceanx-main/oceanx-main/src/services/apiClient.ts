@@ -47,7 +47,7 @@ export class ApiError extends Error {
 
 export interface RequestOptions<T> {
   /** Mock resolver used while the backend does not exist yet. */
-  mock: () => T;
+  mock: () => T | Promise<T>;
   /** Simulated latency in ms so loading states are visible and testable. */
   latencyMs?: number;
   /** Force an error - used by the UI error-state demos. */
@@ -77,7 +77,7 @@ async function request<T>(path: string, options: RequestOptions<T>): Promise<T> 
 
   if (USE_MOCKS) {
     await wait(latencyMs, signal);
-    return mock();
+    return await mock();
   }
 
   try {
@@ -94,14 +94,14 @@ async function request<T>(path: string, options: RequestOptions<T>): Promise<T> 
 
     // Gracefully fallback to mock dataset if endpoint is not implemented on backend (404)
     if (response.status === 404 && mock) {
-      return mock();
+      return await mock();
     }
 
     throw new ApiError(`Request to ${path} failed`, 'http_error', response.status);
   } catch (err) {
     // If backend connection fails or endpoint missing, fallback to mock data
     if (mock && !(err instanceof ApiError && err.status !== 404)) {
-      return mock();
+      return await mock();
     }
     throw err;
   }

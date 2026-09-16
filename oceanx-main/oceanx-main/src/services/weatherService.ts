@@ -8,7 +8,7 @@ export const weatherService = {
   /**
    * Returns live environmental conditions (wind, waves, currents, temp) powered by Open-Meteo Marine API.
    */
-  async current(region = 'Arabian Sea'): Promise<EnvironmentSnapshot> {
+  current: async (region = 'Arabian Sea'): Promise<EnvironmentSnapshot> => {
     try {
       return await apiClient.get<EnvironmentSnapshot>(`/weather/current?region=${encodeURIComponent(region)}`, {
         latencyMs: 150,
@@ -22,7 +22,7 @@ export const weatherService = {
   /**
    * Returns 48-hour met-ocean hourly history from Open-Meteo Marine API.
    */
-  async history(region = 'Arabian Sea'): Promise<typeof MET_OCEAN_HISTORY> {
+  history: async (region = 'Arabian Sea'): Promise<typeof MET_OCEAN_HISTORY> => {
     try {
       return await apiClient.get<typeof MET_OCEAN_HISTORY>('/weather/history', {
         latencyMs: 200,
@@ -36,7 +36,7 @@ export const weatherService = {
   /**
    * Returns animated wind vector field calibrated with real Open-Meteo wind speeds and directions.
    */
-  async windField(center: [number, number] = DEFAULT_MAP_CENTER, region = 'Arabian Sea'): Promise<VectorSample[]> {
+  windField: async (center: [number, number] = DEFAULT_MAP_CENTER, region = 'Arabian Sea'): Promise<VectorSample[]> => {
     try {
       return await apiClient.get<VectorSample[]>('/weather/wind-field', {
         latencyMs: 200,
