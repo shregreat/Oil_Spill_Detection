@@ -73,6 +73,20 @@ export const DATA_SOURCES: DataSource[] = [
     message: 'Nominal. Coastal coverage to 40 nm.'
   },
   {
+    id: 'open-meteo-marine',
+    name: 'Open-Meteo Marine & Wave API',
+    category: 'ocean',
+    provider: 'Open-Meteo / Copernicus Marine',
+    status: 'operational',
+    latencyMs: 180,
+    uptime30dPct: 99.9,
+    lastSyncAt: isoOffset(-2),
+    refreshIntervalMin: 15,
+    recordsLast24h: 96,
+    endpoint: 'v1/marine',
+    message: 'Nominal. Real-time global wave heights, swell, and ocean current velocity streaming.'
+  },
+  {
     id: 'ecmwf',
     name: 'ECMWF Atmospheric Forecast',
     category: 'weather',
@@ -84,7 +98,7 @@ export const DATA_SOURCES: DataSource[] = [
     refreshIntervalMin: 360,
     recordsLast24h: 4,
     endpoint: 'open-data/v1/forecast',
-    message: 'Nominal. 0.25\u00b0 wind and wave fields available to +120 h.'
+    message: 'Nominal. 0.25° wind and wave fields available to +120 h.'
   },
   {
     id: 'incois',

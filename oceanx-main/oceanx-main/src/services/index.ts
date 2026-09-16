@@ -10,3 +10,4 @@ export { systemService } from './systemService';
 export { authService, DEMO_CREDENTIALS, type Session } from './authService';
 export { websocketService, type StreamEvent } from './websocketService';
 export { oilSpillService, type PredictResponse, type SampleScene, type HealthResponse } from './oilSpillService';
+export { openMeteoService, REGION_COORDINATES } from './openMeteoService';

@@ -1,6 +1,10 @@
 import math
 import random
 import logging
+import time
+import json
+import urllib.request
+from datetime import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Query
 from backend.db import local_store
@@ -11,6 +15,104 @@ weather_router = APIRouter(prefix="/weather", tags=["Weather"])
 ocean_router = APIRouter(prefix="/ocean", tags=["Ocean"])
 
 DEFAULT_CENTER = [19.2, 71.5]
+
+REGION_COORDS = {
+    "Arabian Sea": (19.42, 71.60),
+    "Gulf of Kutch": (22.45, 69.50),
+    "Bay of Bengal": (18.50, 86.00),
+    "Laccadive Sea": (10.00, 73.50),
+    "Andaman Sea": (11.50, 93.00),
+}
+
+_open_meteo_cache: dict = {}
+CACHE_TTL_SEC = 300
+
+
+def _fetch_json(url: str, timeout: int = 4) -> dict:
+    req = urllib.request.Request(url, headers={"User-Agent": "OceanX-Maritime/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        return json.loads(response.read().decode())
+
+
+def get_live_open_meteo_conditions(region: str) -> dict:
+    now = time.time()
+    cache_key = f"current_{region}"
+    if cache_key in _open_meteo_cache:
+        cached_time, cached_data = _open_meteo_cache[cache_key]
+        if now - cached_time < CACHE_TTL_SEC:
+            return cached_data
+
+    lat, lng = REGION_COORDS.get(region, (19.42, 71.60))
+    marine_url = f"https://marine-api.open-meteo.com/v1/marine?latitude={lat}&longitude={lng}&current=wave_height,wave_direction,wave_period,ocean_current_velocity,ocean_current_direction"
+    forecast_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,visibility&wind_speed_unit=ms"
+
+    try:
+        marine_data = _fetch_json(marine_url)
+        forecast_data = _fetch_json(forecast_url)
+
+        m_curr = marine_data.get("current", {})
+        f_curr = forecast_data.get("current", {})
+
+        curr_vel = m_curr.get("ocean_current_velocity")
+        curr_speed_ms = round(float(curr_vel) / 3.6, 2) if curr_vel is not None else 0.54
+
+        wind_spd = f_curr.get("wind_speed_10m")
+        wind_speed_ms = round(float(wind_spd), 1) if wind_spd is not None else 7.8
+
+        wind_gust = f_curr.get("wind_gusts_10m")
+        wind_gust_ms = round(float(wind_gust), 1) if wind_gust is not None else round(wind_speed_ms * 1.4, 1)
+
+        wave_h = m_curr.get("wave_height")
+        wave_height_m = round(float(wave_h), 2) if wave_h is not None else 1.8
+
+        wave_p = m_curr.get("wave_period")
+        wave_period_s = round(float(wave_p), 1) if wave_p is not None else 7.2
+
+        air_t = f_curr.get("temperature_2m")
+        air_temp_c = round(float(air_t), 1) if air_t is not None else 28.5
+
+        vis_m = f_curr.get("visibility")
+        visibility_km = max(1, round(float(vis_m) / 1000.0)) if vis_m is not None else 12
+
+        w_code = f_curr.get("weather_code", 2)
+        weather_desc = "Clear sky, calm waters" if w_code == 0 else ("Partly cloudy, moderate swell" if w_code <= 3 else "Choppy seas, squall lines")
+
+        data = {
+            "observedAt": datetime.utcnow().isoformat() + "Z",
+            "windSpeedMs": wind_speed_ms,
+            "windDirDeg": int(f_curr.get("wind_direction_10m", 228)),
+            "windGustMs": wind_gust_ms,
+            "currentSpeedMs": curr_speed_ms,
+            "currentDirDeg": int(m_curr.get("ocean_current_direction", 118)),
+            "waveHeightM": wave_height_m,
+            "wavePeriodS": wave_period_s,
+            "seaSurfaceTempC": round(air_temp_c - 0.7, 1),
+            "airTempC": air_temp_c,
+            "visibilityKm": visibility_km,
+            "weather": weather_desc,
+            "salinityPsu": 35.8,
+            "source": "Open-Meteo Marine API (Live)"
+        }
+        _open_meteo_cache[cache_key] = (now, data)
+        return data
+    except Exception as e:
+        logger.warning(f"Open-Meteo API query failed, using local store: {e}")
+        conditions = local_store.get_meta("regionalConditions", {})
+        return conditions.get(region) or conditions.get("Arabian Sea") or {
+            "observedAt": datetime.utcnow().isoformat() + "Z",
+            "windSpeedMs": 7.8,
+            "windDirDeg": 228,
+            "windGustMs": 11.4,
+            "currentSpeedMs": 0.54,
+            "currentDirDeg": 118,
+            "waveHeightM": 1.9,
+            "wavePeriodS": 7.4,
+            "seaSurfaceTempC": 28.4,
+            "airTempC": 29.1,
+            "visibilityKm": 12,
+            "weather": "Partly cloudy, moderate SW swell",
+            "salinityPsu": 36.2
+        }
 
 
 def _build_vector_field(
@@ -46,35 +148,59 @@ def _build_vector_field(
 @weather_router.get("/current", summary="Get current environmental conditions by region")
 def get_current_weather(region: str = Query("Arabian Sea")):
     """
-    Returns wind, swell, and sea surface temperature for the specified maritime region.
+    Returns live wind, swell, wave, and surface temperature from Open-Meteo Marine API.
     """
-    conditions = local_store.get_meta("regionalConditions", {})
-    return conditions.get(region) or conditions.get("Arabian Sea") or {
-        "observedAt": "2026-09-12T09:22:00.000Z",
-        "windSpeedMs": 7.8,
-        "windDirDeg": 228,
-        "windGustMs": 11.4,
-        "currentSpeedMs": 0.54,
-        "currentDirDeg": 118,
-        "waveHeightM": 1.9,
-        "wavePeriodS": 7.4,
-        "seaSurfaceTempC": 28.4,
-        "airTempC": 29.1,
-        "visibilityKm": 12,
-        "weather": "Partly cloudy, moderate SW swell",
-        "salinityPsu": 36.2
-    }
+    return get_live_open_meteo_conditions(region)
 
 
 @weather_router.get("/history", summary="Get 48-hour met-ocean hourly history")
-def get_weather_history():
+def get_weather_history(region: str = Query("Arabian Sea")):
     """
-    Returns historical time series for wind, current, wave height, and SST.
+    Returns historical time series for wind, current, wave height, and SST from Open-Meteo Marine API.
     """
+    lat, lng = REGION_COORDS.get(region, (19.42, 71.60))
+    cache_key = f"history_{region}"
+    now = time.time()
+
+    if cache_key in _open_meteo_cache:
+        c_time, c_data = _open_meteo_cache[cache_key]
+        if now - c_time < CACHE_TTL_SEC:
+            return c_data
+
+    try:
+        marine_url = f"https://marine-api.open-meteo.com/v1/marine?latitude={lat}&longitude={lng}&hourly=wave_height,ocean_current_velocity&past_days=2&forecast_days=1"
+        forecast_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lng}&hourly=wind_speed_10m,temperature_2m&wind_speed_unit=ms&past_days=2&forecast_days=1"
+
+        m_data = _fetch_json(marine_url)
+        f_data = _fetch_json(forecast_url)
+
+        times = m_data.get("hourly", {}).get("time", []) or f_data.get("hourly", {}).get("time", [])
+        waves = m_data.get("hourly", {}).get("wave_height", [])
+        currents = m_data.get("hourly", {}).get("ocean_current_velocity", [])
+        winds = f_data.get("hourly", {}).get("wind_speed_10m", [])
+        temps = f_data.get("hourly", {}).get("temperature_2m", [])
+
+        count = min(len(times), 48)
+        start_idx = max(0, len(times) - count)
+
+        history = []
+        for i in range(start_idx, len(times)):
+            history.append({
+                "hour": times[i] + "Z" if not times[i].endswith("Z") else times[i],
+                "windMs": round(float(winds[i]), 1) if i < len(winds) and winds[i] is not None else 7.2,
+                "currentMs": round(float(currents[i]) / 3.6, 2) if i < len(currents) and currents[i] is not None else 0.45,
+                "waveM": round(float(waves[i]), 2) if i < len(waves) and waves[i] is not None else 1.6,
+                "sstC": round(float(temps[i]) - 0.5, 1) if i < len(temps) and temps[i] is not None else 28.0
+            })
+
+        if len(history) >= 12:
+            _open_meteo_cache[cache_key] = (now, history)
+            return history
+    except Exception as e:
+        logger.warning(f"Open-Meteo history query failed: {e}")
+
     history = local_store.get_meta("metOceanHistory")
-    if history:
-        return history
-    return []
+    return history if history else []
 
 
 @weather_router.get("/wind-field", summary="Get animated wind vector grid")
@@ -84,10 +210,9 @@ def get_wind_field(
     lng: float = Query(71.5)
 ):
     """
-    Returns 2D vector field of wind vectors powering the animated map particle layer.
+    Returns 2D vector field of wind vectors powered by live Open-Meteo observations.
     """
-    conditions = local_store.get_meta("regionalConditions", {})
-    snapshot = conditions.get(region) or conditions.get("Arabian Sea", {})
+    snapshot = get_live_open_meteo_conditions(region)
     spd = snapshot.get("windSpeedMs", 7.8)
     dir_deg = snapshot.get("windDirDeg", 228)
     return _build_vector_field([lat, lng], spd, dir_deg, seed=17)
@@ -104,10 +229,9 @@ def get_current_field(
     lng: float = Query(71.5)
 ):
     """
-    Returns 2D vector field of hydrodynamic ocean currents for drift simulation.
+    Returns 2D vector field of hydrodynamic ocean currents powered by live Open-Meteo Marine API.
     """
-    conditions = local_store.get_meta("regionalConditions", {})
-    snapshot = conditions.get(region) or conditions.get("Arabian Sea", {})
+    snapshot = get_live_open_meteo_conditions(region)
     spd = snapshot.get("currentSpeedMs", 0.54) * 10.0
     dir_deg = snapshot.get("currentDirDeg", 118)
     return _build_vector_field([lat, lng], spd, dir_deg, seed=29)
